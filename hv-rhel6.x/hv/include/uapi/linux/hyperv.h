@@ -28,7 +28,11 @@
 #include "uuid.h"
 #include <linux/version.h>
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35)
+/* LIS 4.0 only includes the below for <=2.6.35 RHEL kernels, but actually
+ * upstream Linux 2.6.37 also needs the below.
+ */
+
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 37)
 #include "../../linux/hv_compat.h"
 #endif
 

@@ -50,6 +50,8 @@ EXPORT_SYMBOL(using_null_legacy_pic);
 #if (RHEL_RELEASE_CODE < 1540)
 #include <asm/mshyperv.h>
 
+/* Linux 2.6.37 has the 2 symbols: see arch/x86/kernel/cpu/mshyperv.c */
+#if 0
 int x86_hyper_ms_hyperv;
 EXPORT_SYMBOL(x86_hyper_ms_hyperv);
 
@@ -61,6 +63,7 @@ struct ms_hyperv_info ms_hyperv = {
 		    HV_X64_MSR_SYNTIMER_AVAILABLE,
 };
 EXPORT_SYMBOL(ms_hyperv);
+#endif
 
 #endif
 
@@ -758,7 +761,11 @@ static int vmbus_bus_init(int irq)
 	 */
 	set_irq_handler(irq, vmbus_flow_handler);
 
-#if defined(RHEL_RELEASE_VERSION) && (RHEL_RELEASE_CODE >= 1541)
+	/*
+	 * We have backported hv_register_vmbus_handler() to our 2.6.37 tree:
+	 * https://github.com/dcui/linux-2.6.37-LIS-backport/commit/9d6c59d414368978b09bc2b42f559e7d7ea3547a
+	 */
+#if 1
 	/*
 	 * Register our interrupt handler.
 	 */

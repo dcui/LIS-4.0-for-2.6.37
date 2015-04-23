@@ -4,7 +4,10 @@
 
 #include <linux/version.h>
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 35)
+/* LIS 4.0 only includes the below for <=2.6.35 RHEL kernels, but actually
+ * upstream Linux 2.6.37 also needs the below.
+ */
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 37)
 
 #define CN_KVP_IDX	0x9
 #define CN_KVP_VAL	0x1
@@ -84,7 +87,8 @@ static inline unsigned int skb_frag_size(const skb_frag_t *frag)
 
 extern bool using_null_legacy_pic;
 
-#if defined(RHEL_RELEASE_VERSION) && (RHEL_RELEASE_CODE <= 1536)
+/* Upstream 2.6.37 already has vzalloc() */
+#if 0
 static inline void *vzalloc(unsigned long size)
 {
 	void *ptr;
@@ -121,9 +125,12 @@ skb_get_hash(struct sk_buff *skb)
 #endif
 }
 
+/* Upstream 2.6.37 already has pm_wakeup_event() */
+#if 0
 static inline void pm_wakeup_event(struct device *dev, unsigned int msec)
 {
 }
+#endif
 
 #if defined(RHEL_RELEASE_VERSION) && (RHEL_RELEASE_CODE < 1540)
 static inline int kstrtouint(const char *s, unsigned int base, unsigned int *res)
@@ -188,7 +195,11 @@ struct hv_vmbus_device_id {
 	__u8 guid[16];
 	unsigned long driver_data;
 };
+#endif
 
+
+/* Upstream 2.6.37 already has netdev_err()/dbg() and netif_notify_peers() */
+#if 0
 #ifndef netdev_err
 static inline void netdev_err(struct net_device *net, const char *fmt, ...)
 {
@@ -199,7 +210,6 @@ static inline void netdev_err(struct net_device *net, const char *fmt, ...)
 	va_end(args);
 }
 
-#endif
 #endif
 
 #ifndef netdev_dbg
@@ -234,6 +244,7 @@ static inline void  netif_notify_peers(struct net_device *net)
 	rcu_read_unlock();
 }
 
+#endif
 #endif
 #endif
 #endif

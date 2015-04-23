@@ -1,5 +1,9 @@
 include $(M)/overrides.mk
 
+# The 2 definitons is to cope with the LIS 4.0 code:
+# we try to make as less change as possible to the LIS 4.0 code.
+ccflags-y  += -DRHEL_RELEASE_VERSION -DRHEL_RELEASE_CODE=0
+
 obj-m	+= hv_vmbus.o
 obj-m	+= hv_storvsc.o
 obj-m	+= hv_netvsc.o
