@@ -1693,7 +1693,6 @@ static int storvsc_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *scmnd)
 	u32 length;
 
 
-	scmnd->scsi_done = done;
 
 	if (vmstor_current_major <= VMSTOR_WIN8_MAJOR) {
 		/*
