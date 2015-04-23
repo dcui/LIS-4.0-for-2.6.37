@@ -720,13 +720,17 @@ static int hvfb_getmem(struct fb_info *info)
 	if (!fb_virt)
 		goto err2;
 
+	info->apertures = alloc_apertures(1);
+	if (!info->apertures)
+		goto  err3;
+
 
 	if (gen2vm) {
-		info->aperture_base = screen_info.lfb_base;
-		info->aperture_size = screen_info.lfb_size;
+		info->apertures->ranges[0].base = screen_info.lfb_base;
+		info->apertures->ranges[0].size = screen_info.lfb_size;
 	} else {
-		info->aperture_base = pci_resource_start(pdev, 0);
-		info->aperture_size = pci_resource_len(pdev, 0);
+		info->apertures->ranges[0].base = pci_resource_start(pdev, 0);
+		info->apertures->ranges[0].size = pci_resource_len(pdev, 0);
 	}
 
 	info->fix.smem_start = par->mem.start;
@@ -738,6 +742,8 @@ static int hvfb_getmem(struct fb_info *info)
 		pci_dev_put(pdev);
 
 	return 0;
+err3:
+	iounmap(fb_virt);
 
 err2:
 	release_resource(&par->mem);
