@@ -1,0 +1,135 @@
+How to use LIS 4.0 in upstream Linux 2.6.37
+
+The built-in LIS of upstream Linux 2.6.37 is still in the staging/ directory, so it shouldn't be used in production environment.
+LIS 3.5 or 4.0 can't be directly built against 2.6.37 because 2.6.37, released 4 years ago, is too old, so we have to backport the necessary kernel patches to 2.6.37 and backport LIS 4.0.
+
+This guide will show how we can achieve the goal.
+
+NOTE: We do the following in a CentOS 6.3 VM.
+
+1. Install a UP CentOS 6.3 VM (vCPUs=1) and add a Legacy Network Adapter to it.
+	a) Since CentOS 6.3 doesn't have LIS built-in, the synthetic NIC can't work at present.
+	b) Don't use vCPUs > 1, because the tulip driver of the legacy NIC doesn't work well with SMP.
+
+2. Start the VM, get IP in the VM, then pull, build and install my customized 2.6.37 kernel code:
+ (Here my user name is decui)
+ (I added 2 commits on the standard 2.6.37 kernel: https://github.com/dcui/linux-2.6.37-LIS-backport/commits/LIS/v2.6.37)
+ (We can also get the kernel by https://www.kernel.org/pub/linux/kernel/v2.6/linux-2.6.37.tar.bz2 + the 2 commits)
+
+[decui@localhost ~]$ pwd
+/home/decui
+[decui@localhost ~]$ mkdir src; cd src
+[decui@localhost src]$ git clone https://github.com/dcui/linux-2.6.37-LIS-backport.git linux-2.6.37-LIS-backport.git
+Initialized empty Git repository in /home/decui/src/linux-2.6.37-LIS-backport.git/.git/
+remote: Counting objects: 4117537, done.
+remote: Total 4117537 (delta 0), reused 0 (delta 0), pack-reused 4117537
+...
+Resolving deltas: 100% (3461862/3461862), done.
+[decui@localhost src]$ cd linux-2.6.37-LIS-backport.git/
+[decui@localhost linux-2.6.37-LIS-backport.git]$ make -j4 &> build.log  && echo build ok
+build ok
+[decui@localhost linux-2.6.37-LIS-backport.git]$ su
+Password:
+[root@localhost linux-2.6.37-LIS-backport.git]# mkdir /boot/lis4/
+[root@localhost linux-2.6.37-LIS-backport.git]# cp arch/x86/boot/bzImage /boot/lis4/
+[root@localhost linux-2.6.37-LIS-backport.git]# make INSTALL_MOD_STRIP=1 modules_install
+...
+  INSTALL /lib/firmware/keyspan_pda/keyspan_pda.fw
+  INSTALL /lib/firmware/keyspan_pda/xircom_pgs.fw
+  DEPMOD  2.6.37-LIS4+
+[root@localhost linux-2.6.37-LIS-backport.git]# dracut --force  /boot/lis4/initrd 2.6.37-LIS4+
+[root@localhost linux-2.6.37-LIS-backport.git]#
+
+Next, add a new grub entry to use the new kernel.
+/boot/grub/grub.conf should look like
+
+---------------------------------------------------------------
+default=0
+timeout=5
+splashimage=(hd0,0)/grub/splash.xpm.gz
+hiddenmenu
+
+title CentOS 2.6.37-LIS4+
+        root (hd0,0)
+        kernel /lis4/bzImage ro root=/dev/mapper/VolGroup-lv_root rd_NO_LUKS LANG=en_US.UTF-8 rd_NO_MD rd_LVM_LV=VolGroup/lv_swap SYSFONT=latarcyrheb-sun16 crashkernel=128M rd_LVM_LV=VolGroup/lv_root  KEYBOARDTYPE=pc KEYTABLE=us rd_NO_DM rhgb quiet
+        initrd /lis4/initrd
+
+title CentOS (2.6.32-279.el6.x86_64)
+        root (hd0,0)
+        kernel /vmlinuz-2.6.32-279.el6.x86_64 ro root=/dev/mapper/VolGroup-lv_root rd_NO_LUKS LANG=en_US.UTF-8 rd_NO_MD rd_LVM_LV=VolGroup/lv_swap SYSFONT=latarcyrheb-sun16 crashkernel=128M rd_LVM_LV=VolGroup/lv_root  KEYBOARDTYPE=pc KEYTABLE=us rd_NO_DM rhgb quiet
+        initrd /initramfs-2.6.32-279.el6.x86_64.img
+---------------------------------------------------------------
+
+Next, shutdown the VM by ‘shutdown -h now’
+
+3. Start the VM, get IP in the VM, then pull, build and install my customized LIS 4.0 code:
+ (I added 6 commits on the standard LIS 4.0 code: https://github.com/dcui/LIS-4.0-for-2.6.37/commits/master)
+
+[decui@localhost LIS-4.0-for-2.6.37.git]$ uname -a
+Linux localhost 2.6.37-LIS4+ #1 SMP Fri Apr 24 05:17:13 CST 2015 x86_64 x86_64 x86_64 GNU/Linux
+[decui@localhost ~]$ cd /home/decui/src/
+[decui@localhost src]$ ls
+linux-2.6.37-LIS-backport.git
+[decui@localhost src]$ git clone https://github.com/dcui/LIS-4.0-for-2.6.37.git  LIS-4.0-for-2.6.37.git
+...
+Resolving deltas: 100% (105/105), done.
+[decui@localhost src]$ cd LIS-4.0-for-2.6.37.git
+[decui@localhost LIS-4.0-for-2.6.37.git]$ cd hv-rhel6.x/hv/
+[decui@localhost hv]$ pwd
+/home/decui/src/LIS-4.0-for-2.6.37.git/hv-rhel6.x/hv
+[decui@localhost hv]$ make -C /lib/modules/$(uname -r)/build M=`pwd` clean
+make: Entering directory `/home/decui/src/linux-2.6.37-LIS-backport.git'
+make: Leaving directory `/home/decui/src/linux-2.6.37-LIS-backport.git'
+[decui@localhost hv]$ make -C /lib/modules/$(uname -r)/build M=`pwd` modules
+make: Entering directory `/home/decui/src/linux-2.6.37-LIS-backport.git'
+  CC [M]  /home/decui/src/LIS-4.0-for-2.6.37.git/hv-rhel6.x/hv/netvsc_drv.o
+...
+  Building modules, stage 2.
+...
+make: Leaving directory `/home/decui/src/linux-2.6.37-LIS-backport.git'
+[decui@localhost hv]$ su
+Password:
+[root@localhost hv]# mkdir -p  /lib/modules/$(uname -r)/extra/
+[root@localhost hv]# cp -f ./*.ko /lib/modules/$(uname -r)/extra/
+[root@localhost hv]# depmod
+[root@localhost hv]# cp -f ./hyperv_pvdrivers.conf /etc/modprobe.d/
+[root@localhost hv]# dracut --force  /boot/lis4/initrd  $(uname -r)
+[root@localhost hv]#
+
+Next, install the LIS daemons for KVP/VSS/Fcopy:
+[root@localhost hv]# yum list | grep -i hyperv
+hyperv-daemons.x86_64                   0-0.15.20130826git.el6           base
+hyperv-daemons-license.noarch           0-0.15.20130826git.el6           base
+hypervfcopyd.x86_64                     0-0.15.20130826git.el6           base
+hypervkvpd.x86_64                       0-0.15.20130826git.el6           base
+hypervvssd.x86_64                       0-0.15.20130826git.el6           base
+[root@localhost hv]# yum install -y hyperv-daemons.x86_64
+Loaded plugins: fastestmirror, refresh-packagekit, security
+...
+  Installing : hyperv-daemons-license-0-0.15.20130826git.el6.noarch                                                                                                            1/5
+  Installing : hypervkvpd-0-0.15.20130826git.el6.x86_64                                                                                                                        2/5
+  Installing : hypervfcopyd-0-0.15.20130826git.el6.x86_64                                                                                                                      3/5
+  Installing : hypervvssd-0-0.15.20130826git.el6.x86_64                                                                                                                        4/5
+  Installing : hyperv-daemons-0-0.15.20130826git.el6.x86_64                                                                                                                    5/5
+...
+Complete!
+[root@localhost hv]#
+
+4. Shutdown the VM by 'shutdown -h now'
+
+5. In Hyper-V Manager’s VM’s “Setting”, remove the Legacy NIC, and keep the (synthetic) Network Adapter (or add one if there is no synthetic NIC)
+   Now we can use SMP VM, e.g., we can assign 4 vCPUs to the VM.
+
+6. Start the VM and enjoy LIS 4.0 in 2.6.37!
+     e.g., we can check the Hyper-V modules:
+[decui@localhost ~]$ lsmod | egrep 'hv|hyperv'
+hyperv_keyboard         3594  0
+hid_hyperv              4532  0
+hv_netvsc              26481  0
+hv_balloon             11332  0 [permanent]
+hv_utils               14294  0
+hyperv_fb               8723  2
+hv_storvsc             12979  2
+hv_vmbus              282175  7 hyperv_keyboard,hid_hyperv,hv_netvsc,hv_balloon,hv_utils,hyperv_fb,hv_storvsc
+
+
