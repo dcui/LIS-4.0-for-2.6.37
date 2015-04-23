@@ -646,6 +646,9 @@ static void netvsc_send_completion(struct netvsc_device *net_device,
 		if (net_device->destroy && num_outstanding_sends == 0)
 			wake_up(&net_device->wait_drain);
 
+		if (netdev_get_tx_queue(ndev, q_idx) == NULL)
+			return;
+
 		if (netif_tx_queue_stopped(netdev_get_tx_queue(ndev, q_idx)) &&
 		    !net_device->start_remove &&
 		    (hv_ringbuf_avail_percent(&channel->outbound) >
